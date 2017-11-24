@@ -174,7 +174,7 @@ def save_plot(epoch_num, points, graph_name):
 def main():
     log.info('[program starts.]')
     train, dev, dev_y, embedding, opt = load_data(vars(args))
-    log.info('[Data loaded.]')
+    log.info('[Data loaded.  ]')
 
     if args.resume:
         log.info('[loading previous model...]')
