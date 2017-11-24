@@ -13,6 +13,9 @@ import msgpack
 import pandas as pd
 from drqa.model import DocReaderModel
 from drqa.utils import str2bool
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import numpy as np
 
 parser = argparse.ArgumentParser(
     description='Train a Document Reader model.'
@@ -116,6 +119,57 @@ ch.setFormatter(formatter)
 log.addHandler(fh)
 log.addHandler(ch)
 
+####################################################################
+# set result graph dir
+EM_graph_dir = 'result/graph/EM'
+os.makedirs(EM_graph_dir, exist_ok=True)
+EM_graph_dir = os.path.abspath(EM_graph_dir)
+
+F1_graph_dir = 'result/graph/F1'
+os.makedirs(F1_graph_dir, exist_ok=True)
+F1_graph_dir = os.path.abspath(F1_graph_dir)
+
+Loss_graph_dir = 'result/graph/Loss'
+os.makedirs(Loss_graph_dir, exist_ok=True)
+Loss_graph_dir = os.path.abspath(Loss_graph_dir)
+
+# set result em dir
+em_dir = 'result/em_data'
+os.makedirs(em_dir, exist_ok=True)
+em_dir = os.path.abspath(em_dir)
+
+# set result f1 dir
+f1_dir = 'result/f1_data'
+os.makedirs(f1_dir, exist_ok=True)
+f1_dir = os.path.abspath(f1_dir)
+
+# set result loss dir
+loss_dir = 'result/loss_data'
+os.makedirs(loss_dir, exist_ok=True)
+loss_dir = os.path.abspath(loss_dir)
+
+'''    graph for em and f1 graph
+def save_plot(epoch_num, em_points, f1_points):
+    plt.figure(1)
+    plt.subplot(211)
+    plt.plot(epoch_num, em_points, 'k', epoch_num, em_points, 'ko')
+    plt.ylabel('EM')
+
+    plt.subplot(212)
+    plt.plot(epoch_num, f1_points, 'r', epoch_num, f1_points, 'ro')
+    plt.xlabel('epoch')
+    plt.ylabel('F1')
+    plt.savefig('./result/graph/' + 'EM_F1_graph_epoch_' + str(epoch_num[-1]) + '.png')
+'''
+
+def save_plot(epoch_num, points, graph_name):
+    plt.figure(1)
+    plt.plot(epoch_num, points, 'k', epoch_num, points, 'ko')
+    plt.ylabel(graph_name)
+    plt.xlabel('epoch')
+    plt.savefig('./result/graph/' + graph_name + '/' + graph_name + '_graph_epoch_' + str(epoch_num[-1]) + '.png')
+
+####################################################################
 
 def main():
     log.info('[program starts.]')
@@ -140,17 +194,40 @@ def main():
 
     if args.cuda:
         model.cuda()
-
+    ############################
+    point_em = []
+    point_f1 = []
+    point_loss = []
+    stacked_epoch = []
+    ############################
     if args.resume:
         batches = BatchGen(dev, batch_size=1, evaluation=True, gpu=args.cuda)
         predictions = []
         for batch in batches:
             predictions.extend(model.predict(batch))
         em, f1 = score(predictions, dev_y)
+        ###############################################################
+        for i in range(epoch_0-1):
+            stacked_epoch.append(i+1)   #stack epoch from 1 to (epoch_0 - 1)
+        for em_resume in open("./result/em_data/"+"until_epoch_"+str(epoch_0-1)+"_em.txt").read().strip().split('\n'):
+            em_resume = float(em_resume)
+            point_em.append(em_resume)
+        for f1_resume in open("./result/f1_data/"+"until_epoch_"+str(epoch_0-1)+"_f1.txt").read().strip().split('\n'):
+            f1_resume = float(f1_resume)
+            point_f1.append(f1_resume)
+        for loss_resume in open("./result/loss_data/"+"until_epoch_"+str(epoch_0-1)+"_loss.txt").read().strip().split('\n'):
+            loss_resume = float(loss_resume)
+            point_loss.append(loss_resume)
+
+        save_plot(stacked_epoch, point_em, 'EM')
+        save_plot(stacked_epoch, point_f1, 'F1')
+        save_plot(stacked_epoch, point_loss, 'Loss')
+        ###############################################################
         log.info("[dev EM: {} F1: {}]".format(em, f1))
         best_val_score = f1
     else:
         best_val_score = 0.0
+
 
     for epoch in range(epoch_0, epoch_0 + args.epochs):
         log.warn('Epoch {}'.format(epoch))
@@ -170,6 +247,27 @@ def main():
             for batch in batches:
                 predictions.extend(model.predict(batch))
             em, f1 = score(predictions, dev_y)
+            ###############################################################
+            stacked_epoch.append(epoch)
+            point_em.append(em)
+            point_f1.append(f1)
+            point_loss.append(model.train_loss.avg)
+            print("train_loss:")
+            print(model.train_loss.avg)
+            with open("./result/em_data/"+"until_epoch_"+str(epoch)+"_em.txt", "wb") as f:
+                np.savetxt(f, point_em)
+                print("until_epoch_" + str(epoch) + "em.txt saved.")
+            with open("./result/f1_data/"+"until_epoch_"+str(epoch)+"_f1.txt", "wb") as f:
+                np.savetxt(f, point_f1)
+                print("until_epoch_" + str(epoch) + "f1.txt saved.")
+            with open("./result/loss_data/"+"until_epoch_"+str(epoch)+"_loss.txt", "wb") as f:
+                np.savetxt(f, point_loss)
+                print("until_epoch_" + str(epoch) + "loss.txt saved.")
+
+            save_plot(stacked_epoch, point_em, 'EM')
+            save_plot(stacked_epoch, point_f1, 'F1')
+            save_plot(stacked_epoch, point_loss, 'Loss')
+            ###############################################################
             log.warn("dev EM: {} F1: {}".format(em, f1))
         # save
         if not args.save_last_only or epoch == epoch_0 + args.epochs - 1:
