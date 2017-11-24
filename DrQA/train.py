@@ -119,44 +119,88 @@ ch.setFormatter(formatter)
 log.addHandler(fh)
 log.addHandler(ch)
 
-##########################################################################################
+################################################################################################
+# set file directory for each running scripts
+time = datetime.now()
+time_str = str(time.year)+'YY_'+str(time.month)+'MM_'+str(time.day)+'DD_'+str(time.hour)+'H_' \
+           + str(time.minute)+'M_'+str(time.second)+'S'
+print(time_str)
+
 # set result graph dir
-EM_graph_dir = 'result/graph/EM'
+EM_graph_dir = 'result/graph/EM/EM_' + time_str
 os.makedirs(EM_graph_dir, exist_ok=True)
 EM_graph_dir = os.path.abspath(EM_graph_dir)
 
-F1_graph_dir = 'result/graph/F1'
+F1_graph_dir = 'result/graph/F1/F1_' + time_str
 os.makedirs(F1_graph_dir, exist_ok=True)
 F1_graph_dir = os.path.abspath(F1_graph_dir)
 
-Loss_graph_dir = 'result/graph/Loss'
+Loss_graph_dir = 'result/graph/Loss/Loss_' + time_str
 os.makedirs(Loss_graph_dir, exist_ok=True)
 Loss_graph_dir = os.path.abspath(Loss_graph_dir)
 
 # set result em dir
-em_dir = 'result/data/em_data'
+em_dir = 'result/data/em_data/em_data_' + time_str
 os.makedirs(em_dir, exist_ok=True)
 em_dir = os.path.abspath(em_dir)
 
 # set result f1 dir
-f1_dir = 'result/data/f1_data'
+f1_dir = 'result/data/f1_data/f1_data_' + time_str
 os.makedirs(f1_dir, exist_ok=True)
 f1_dir = os.path.abspath(f1_dir)
 
 # set result loss dir
-loss_dir = 'result/data/loss_data'
+loss_dir = 'result/data/loss_data/loss_data_' + time_str
 os.makedirs(loss_dir, exist_ok=True)
 loss_dir = os.path.abspath(loss_dir)
 
 
-def save_plot(epoch_num, points, graph_name):
+def save_each_plot(epoch_num, points, file_dir, graph_name):
     plt.figure(1)
-    plt.plot(epoch_num, points, 'k', epoch_num, points, 'ko')
+    plt.plot(epoch_num, points)
     plt.ylabel(graph_name)
     plt.xlabel('epoch')
-    plt.savefig('./result/graph/' + graph_name + '/' + graph_name + '_graph_epoch_' + str(epoch_num[-1]) + '.png')
+    plt.savefig(file_dir + '/' + graph_name + '_graph_epoch_' + str(epoch_num[-1]) + '.png')
     plt.close()
-#########################################################################################
+
+#ex) file_dir=result/data/loss_data
+def save_all_model_plot(file_dir, graph_name, save_dir):
+    plt.figure(1)
+    plt.ylabel(graph_name)
+    plt.xlabel('epoch')
+    dir_info = os.walk(file_dir)
+    for x in dir_info:
+        epoch_list = []
+        points_list = []
+        dir_path = x[0]     #dir_path = result/data/loss_data or result/data/loss_data/loss_data_time
+        dir_internal_files = x[2]
+        if not dir_internal_files:
+            # in this case, folder has only folders
+            pass
+        else:
+            # in this case, folder has some files like until_epoch_21_loss.txt
+            dir_epoch_num = len(dir_internal_files)
+            for i in range(dir_epoch_num):
+                epoch_list.append(i + 1)
+            points_file = find_full_points_file(dir_internal_files)
+            for points in open(dir_path + "/" + points_file).read().strip().split('\n'):
+                points = float(points)
+                points_list.append(points)
+            plt.plot(epoch_list, points_list, label=dir_path)
+            plt.legend(loc=0, borderaxespad=0.)
+    plt.savefig(save_dir + '/' + graph_name + '_all' + '.png')
+    plt.close()
+
+
+def find_full_points_file(files):
+    num_list = []
+    for i in range(len(files)):
+        num = int(files[i].split('_')[2])
+        num_list.append(num)
+    max_index = num_list.index(max(num_list))
+    completed_points_file = files[max_index]
+    return completed_points_file
+################################################################################################
 
 def main():
     log.info('[program starts.]')
@@ -186,6 +230,7 @@ def main():
     point_f1 = []
     point_loss = []
     stacked_epoch = []
+    train_loss_list = []
     ############################
     if args.resume:
         batches = BatchGen(dev, batch_size=1, evaluation=True, gpu=args.cuda)
@@ -193,7 +238,7 @@ def main():
         for batch in batches:
             predictions.extend(model.predict(batch))
         em, f1 = score(predictions, dev_y)
-        ####################################################################################################
+        ############################################################################################################
         for i in range(epoch_0-1):
             stacked_epoch.append(i+1)   #stack epoch from 1 to (epoch_0 - 1)
         for em_resume in open(em_dir + "/until_epoch_" + str(epoch_0-1)+"_em.txt").read().strip().split('\n'):
@@ -206,10 +251,10 @@ def main():
             loss_resume = float(loss_resume)
             point_loss.append(loss_resume)
 
-        save_plot(stacked_epoch, point_em, 'EM')
-        save_plot(stacked_epoch, point_f1, 'F1')
-        save_plot(stacked_epoch, point_loss, 'Loss')
-        #####################################################################################################
+        save_each_plot(stacked_epoch, point_em, EM_graph_dir,  'EM')
+        save_each_plot(stacked_epoch, point_f1, F1_graph_dir, 'F1')
+        save_each_plot(stacked_epoch, point_loss, Loss_graph_dir, 'Loss')
+        ############################################################################################################
         log.info("[dev EM: {} F1: {}]".format(em, f1))
         best_val_score = f1
     else:
@@ -227,6 +272,9 @@ def main():
                 log.info('updates[{0:6}] train loss[{1:.5f}] remaining[{2}]'.format(
                     model.updates, model.train_loss.avg,
                     str((datetime.now() - start) / (i + 1) * (len(batches) - i - 1)).split('.')[0]))
+                train_loss_list.append(model.train_loss.avg)
+        train_loss_avg = np.sum(train_loss_list)/len(train_loss_list)
+        print(train_loss_avg)
         # eval
         if epoch % args.eval_per_epoch == 0:
             batches = BatchGen(dev, batch_size=1, evaluation=True, gpu=args.cuda)
@@ -238,7 +286,7 @@ def main():
             stacked_epoch.append(epoch)
             point_em.append(em)
             point_f1.append(f1)
-            point_loss.append(model.train_loss.avg)
+            point_loss.append(train_loss_avg)
             print("train_loss:")
             print(model.train_loss.avg)
             with open(em_dir + "/until_epoch_" + str(epoch)+"_em.txt", "wb") as f:
@@ -251,10 +299,10 @@ def main():
                 np.savetxt(f, point_loss)
                 print("until_epoch_" + str(epoch) + "loss.txt saved.")
 
-            save_plot(stacked_epoch, point_em, 'EM')
-            save_plot(stacked_epoch, point_f1, 'F1')
-            save_plot(stacked_epoch, point_loss, 'Loss')
-            #####################################################################################
+            save_each_plot(stacked_epoch, point_em, EM_graph_dir, 'EM')
+            save_each_plot(stacked_epoch, point_f1, F1_graph_dir, 'F1')
+            save_each_plot(stacked_epoch, point_loss, Loss_graph_dir, 'Loss')
+            ######################################################################################
             log.warn("dev EM: {} F1: {}".format(em, f1))
         # save
         if not args.save_last_only or epoch == epoch_0 + args.epochs - 1:
@@ -267,6 +315,10 @@ def main():
                     os.path.join(model_dir, 'best_model.pt'))
                 log.info('[new best model saved.]')
 
+    # After processing for all epoch, save the plot of all saved graphs(all_previous + present)
+    save_all_model_plot('result/data/em_data', 'EM', EM_graph_dir)
+    save_all_model_plot('result/data/f1_data', 'F1', F1_graph_dir)
+    save_all_model_plot('result/data/loss_data', 'Loss', Loss_graph_dir)
 
 def lr_decay(optimizer, lr_decay):
     for param_group in optimizer.param_groups:
