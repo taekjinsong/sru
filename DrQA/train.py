@@ -186,7 +186,7 @@ def save_all_model_plot(file_dir, graph_name, save_dir):
             for points in open(dir_path + "/" + points_file).read().strip().split('\n'):
                 points = float(points)
                 points_list.append(points)
-            plt.plot(epoch_list, points_list, label=dir_path)
+            plt.plot(epoch_list, points_list, label=dir_path.split('/')[3])
             plt.legend(loc=0, borderaxespad=0.)
     plt.savefig(save_dir + '/' + graph_name + '_all' + '.png')
     plt.close()
