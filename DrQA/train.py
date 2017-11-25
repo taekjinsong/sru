@@ -272,8 +272,9 @@ def main():
                 log.info('updates[{0:6}] train loss[{1:.5f}] remaining[{2}]'.format(
                     model.updates, model.train_loss.avg,
                     str((datetime.now() - start) / (i + 1) * (len(batches) - i - 1)).split('.')[0]))
-                train_loss_list.append(model.train_loss.avg)
-        train_loss_avg = np.sum(train_loss_list)/len(train_loss_list)
+                train_loss_list.append(model.train_loss.avg)   # ########## <- add train_loss of all batches
+        train_loss_avg = np.sum(train_loss_list)/len(train_loss_list)   # ######## <- added.
+
         print(train_loss_avg)
         # eval
         if epoch % args.eval_per_epoch == 0:
