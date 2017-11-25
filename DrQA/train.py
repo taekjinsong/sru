@@ -127,30 +127,30 @@ time_str = str(time.year)+'YY_'+str(time.month)+'MM_'+str(time.day)+'DD_'+str(ti
 print(time_str)
 
 # set result graph dir
-EM_graph_dir = 'result/graph/EM/EM_' + time_str
+EM_graph_dir = '../result/graph/EM/EM_' + time_str
 os.makedirs(EM_graph_dir, exist_ok=True)
 EM_graph_dir = os.path.abspath(EM_graph_dir)
 
-F1_graph_dir = 'result/graph/F1/F1_' + time_str
+F1_graph_dir = '../result/graph/F1/F1_' + time_str
 os.makedirs(F1_graph_dir, exist_ok=True)
 F1_graph_dir = os.path.abspath(F1_graph_dir)
 
-Loss_graph_dir = 'result/graph/Loss/Loss_' + time_str
+Loss_graph_dir = '../result/graph/Loss/Loss_' + time_str
 os.makedirs(Loss_graph_dir, exist_ok=True)
 Loss_graph_dir = os.path.abspath(Loss_graph_dir)
 
 # set result em dir
-em_dir = 'result/data/em_data/em_data_' + time_str
+em_dir = '../result/data/em_data/em_data_' + time_str
 os.makedirs(em_dir, exist_ok=True)
 em_dir = os.path.abspath(em_dir)
 
 # set result f1 dir
-f1_dir = 'result/data/f1_data/f1_data_' + time_str
+f1_dir = '../result/data/f1_data/f1_data_' + time_str
 os.makedirs(f1_dir, exist_ok=True)
 f1_dir = os.path.abspath(f1_dir)
 
 # set result loss dir
-loss_dir = 'result/data/loss_data/loss_data_' + time_str
+loss_dir = '../result/data/loss_data/loss_data_' + time_str
 os.makedirs(loss_dir, exist_ok=True)
 loss_dir = os.path.abspath(loss_dir)
 
@@ -316,10 +316,12 @@ def main():
                     os.path.join(model_dir, 'best_model.pt'))
                 log.info('[new best model saved.]')
 
+    #############################################################################################
     # After processing for all epoch, save the plot of all saved graphs(all_previous + present)
-    save_all_model_plot('result/data/em_data', 'EM', EM_graph_dir)
-    save_all_model_plot('result/data/f1_data', 'F1', F1_graph_dir)
-    save_all_model_plot('result/data/loss_data', 'Loss', Loss_graph_dir)
+    save_all_model_plot('../result/data/em_data', 'EM', EM_graph_dir)
+    save_all_model_plot('../result/data/f1_data', 'F1', F1_graph_dir)
+    save_all_model_plot('../result/data/loss_data', 'Loss', Loss_graph_dir)
+    #############################################################################################
 
 def lr_decay(optimizer, lr_decay):
     for param_group in optimizer.param_groups:
